@@ -2,31 +2,39 @@ import {
   Schema,
   model,
   models,
+  Document,
   Types,
-  type HydratedDocument,
-  type InferSchemaType,
 } from "mongoose";
 import Event from "./event.model";
 
-const EMAIL_REGEX =
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export interface IBooking extends Document {
+  eventId: Types.ObjectId;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-const bookingSchema = new Schema(
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+const BookingSchema = new Schema<IBooking>(
   {
     eventId: {
       type: Schema.Types.ObjectId,
       ref: "Event",
-      required: true,
+      required: [true, "Event ID is required"],
       index: true,
     },
+
     email: {
       type: String,
-      required: true,
-      lowercase: true,
+      required: [true, "Email is required"],
       trim: true,
+      lowercase: true,
       validate: {
-        validator: (value: string) => EMAIL_REGEX.test(value),
-        message: "Invalid email address.",
+        validator: (email: string): boolean =>
+          EMAIL_REGEX.test(email),
+        message: "Please provide a valid email address",
       },
     },
   },
@@ -35,36 +43,47 @@ const bookingSchema = new Schema(
   }
 );
 
-export type BookingDocument = HydratedDocument<
-  InferSchemaType<typeof bookingSchema>
->;
-
 /**
- * Ensure the referenced event exists before creating
- * a booking to avoid orphaned records.
+ * Verify that the referenced Event exists before
+ * creating or updating a booking.
  */
-
-bookingSchema.pre("save", async function () {
-  const booking = this as BookingDocument;
-
-  if (!Types.ObjectId.isValid(booking.eventId)) {
-    throw new Error("Invalid event id.");
+BookingSchema.pre("save", async function () {
+  // Skip database lookup if eventId wasn't changed.
+  if (!this.isModified("eventId") && !this.isNew) {
+    return;
   }
 
   const eventExists = await Event.exists({
-    _id: booking.eventId,
+    _id: this.eventId,
   });
 
   if (!eventExists) {
-    throw new Error("Referenced event does not exist.");
+    throw new Error(
+      `Event with ID ${this.eventId} does not exist`
+    );
   }
 });
 
+/**
+ * Indexes for common query patterns.
+ */
+BookingSchema.index({ eventId: 1 });
+BookingSchema.index({ eventId: 1, createdAt: -1 });
+BookingSchema.index({ email: 1 });
+
+/**
+ * Prevent duplicate registrations for the same event.
+ */
+BookingSchema.index(
+  { eventId: 1, email: 1 },
+  {
+    unique: true,
+    name: "uniq_event_email",
+  }
+);
+
 const Booking =
   models.Booking ||
-  model<InferSchemaType<typeof bookingSchema>>(
-    "Booking",
-    bookingSchema
-  );
+  model<IBooking>("Booking", BookingSchema);
 
 export default Booking;

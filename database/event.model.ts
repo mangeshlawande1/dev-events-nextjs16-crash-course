@@ -2,20 +2,75 @@ import {
   Schema,
   model,
   models,
-  type HydratedDocument,
-  type InferSchemaType,
+  InferSchemaType,
+  HydratedDocument,
 } from "mongoose";
 
 /**
- * Convert a title into a URL-friendly slug.
+ * Generate a URL-friendly slug from a title.
  */
 function generateSlug(title: string): string {
   return title
-    .trim()
     .toLowerCase()
+    .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Normalize a date into ISO format.
+ */
+function normalizeDate(dateString: string): string {
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid date format.");
+  }
+
+  return date.toISOString();
+}
+
+/**
+ * Normalize time into HH:mm (24-hour format).
+ */
+function normalizeTime(timeString: string): string {
+  const regex = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i;
+  const match = timeString.trim().match(regex);
+
+  if (!match) {
+    throw new Error(
+      "Invalid time format. Use HH:mm or HH:mm AM/PM."
+    );
+  }
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3]?.toUpperCase();
+
+  if (period) {
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    }
+
+    if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+  }
+
+  if (
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    throw new Error("Invalid time value.");
+  }
+
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 const eventSchema = new Schema(
@@ -25,75 +80,92 @@ const eventSchema = new Schema(
       required: true,
       trim: true,
     },
+
     slug: {
       type: String,
+      required: true,
       unique: true,
+      lowercase: true,
       trim: true,
     },
+
     description: {
       type: String,
       required: true,
       trim: true,
     },
+
     overview: {
       type: String,
       required: true,
       trim: true,
     },
+
     image: {
       type: String,
       required: true,
       trim: true,
     },
+
     venue: {
       type: String,
       required: true,
       trim: true,
     },
+
     location: {
       type: String,
       required: true,
       trim: true,
     },
+
     date: {
       type: String,
       required: true,
-      trim: true,
     },
+
     time: {
       type: String,
       required: true,
-      trim: true,
     },
+
     mode: {
       type: String,
       required: true,
-      trim: true,
+      lowercase: true,
       enum: ["online", "offline", "hybrid"],
     },
+
     audience: {
       type: String,
       required: true,
       trim: true,
     },
+
     agenda: {
       type: [String],
       required: true,
       validate: {
-        validator: (value: string[]) => value.length > 0,
+        validator: (v: string[]) =>
+          v.length > 0 &&
+          v.every((item) => item.trim().length > 0),
         message: "Agenda cannot be empty.",
       },
     },
+
     organizer: {
       type: String,
       required: true,
       trim: true,
     },
+
     tags: {
       type: [String],
       required: true,
       validate: {
-        validator: (value: string[]) => value.length > 0,
+        validator: (v: string[]) =>
+          v.length > 0 &&
+          v.every((item) => item.trim().length > 0),
         message: "Tags cannot be empty.",
       },
     },
@@ -103,63 +175,33 @@ const eventSchema = new Schema(
   }
 );
 
-export type EventDocument = HydratedDocument<
-  InferSchemaType<typeof eventSchema>
->;
+export type Event = InferSchemaType<typeof eventSchema>;
+export type EventDocument = HydratedDocument<Event>;
 
 /**
- * Generate slug only when title changes and normalize
- * date/time into a consistent format before saving.
+ * Generate slug and normalize date/time before saving.
  */
 eventSchema.pre("save", async function () {
   const event = this as EventDocument;
 
-  if (event.isModified("title")) {
+  if (event.isModified("title") || event.isNew) {
     event.slug = generateSlug(event.title);
   }
 
   if (event.isModified("date")) {
-    const parsedDate = new Date(event.date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      throw new Error("Invalid event date.");
-    }
-
-    event.date = parsedDate.toISOString();
+    event.date = normalizeDate(event.date);
   }
 
   if (event.isModified("time")) {
-    const normalizedTime = event.time.trim().toUpperCase();
-    event.time = normalizedTime;
-  }
-
-  const requiredFields = [
-    event.title,
-    event.description,
-    event.overview,
-    event.image,
-    event.venue,
-    event.location,
-    event.date,
-    event.time,
-    event.mode,
-    event.audience,
-    event.organizer,
-  ];
-
-  const hasEmptyField = requiredFields.some(
-    (field) => field.trim().length === 0
-  );
-
-  if (hasEmptyField) {
-    throw new Error("Required fields cannot be empty.");
+    event.time = normalizeTime(event.time);
   }
 });
 
 eventSchema.index({ slug: 1 }, { unique: true });
+eventSchema.index({ date: 1, mode: 1 });
 
-const Event =
+const EventModel =
   models.Event ||
-  model<InferSchemaType<typeof eventSchema>>("Event", eventSchema);
+  model<Event>("Event", eventSchema);
 
-export default Event;
+export default EventModel;
