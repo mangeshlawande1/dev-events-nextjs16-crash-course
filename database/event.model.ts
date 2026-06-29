@@ -83,7 +83,6 @@ const eventSchema = new Schema(
 
     slug: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
       trim: true,
@@ -197,11 +196,17 @@ eventSchema.pre("save", async function () {
   }
 });
 
-eventSchema.index({ slug: 1 }, { unique: true });
 eventSchema.index({ date: 1, mode: 1 });
 
 const EventModel =
   models.Event ||
   model<Event>("Event", eventSchema);
+
+  
+  export type EventResponse = Event & {
+  _id: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default EventModel;
