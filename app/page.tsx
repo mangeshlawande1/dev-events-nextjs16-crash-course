@@ -19,11 +19,13 @@ const Page = async() => {
             <h3>Featured Events </h3>
 
             <ul className='events'>
-              {events &&  events.length > 0 && events.map((event : EventResponse  ) => (
-                <li key={event._id}>
-                 <EventCard {...event} slug={event.slug ?? ''} />
-                </li>
-               ))}
+              {events?.map((event: EventResponse) =>
+                event.slug ? (
+                  <li key={event._id}>
+                    <EventCard {...event} slug={event.slug} />
+                  </li>
+                ) : null
+              )}
             </ul>
           </div>
     </section>

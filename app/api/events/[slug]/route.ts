@@ -63,10 +63,6 @@ export async function GET(
     return NextResponse.json(
       {
         message: "Failed to fetch event.",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Internal Server Error",
       },
       {
         status: 500,

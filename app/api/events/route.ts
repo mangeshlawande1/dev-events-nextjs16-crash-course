@@ -18,12 +18,39 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Invalid JSON data format'}, { status: 400 })
         }
 
-        const file = formData.get('image') as File;
+        const file = formData.get('image');
+        const tagsRaw = formData.get('tags');
+        const agendaRaw = formData.get('agenda');
 
-        if(!file) return NextResponse.json({ message: 'Image file is required'}, { status: 400 })
+        if (!(file instanceof File) || file.size === 0) {
+            return NextResponse.json({ message: 'Image file is required'}, { status: 400 });
+        }
 
-        let tags = JSON.parse(formData.get('tags') as string);
-        let agenda = JSON.parse(formData.get('agenda') as string);
+        if (!file.type.startsWith('image/')) {
+            return NextResponse.json({ message: 'Image must be an image file'}, { status: 400 });
+        }
+
+        const maxImageSize = 5 * 1024 * 1024;
+        if (file.size > maxImageSize) {
+            return NextResponse.json({ message: 'Image file is too large'}, { status: 400 });
+        }
+
+        if (typeof tagsRaw !== 'string' || typeof agendaRaw !== 'string') {
+            return NextResponse.json({ message: 'Tags and agenda are required'}, { status: 400 });
+        }
+
+        let tags;
+        let agenda;
+        try {
+            tags = JSON.parse(tagsRaw);
+            agenda = JSON.parse(agendaRaw);
+        } catch {
+            return NextResponse.json({ message: 'Invalid tags or agenda format'}, { status: 400 });
+        }
+
+        if (!Array.isArray(tags) || !Array.isArray(agenda)) {
+            return NextResponse.json({ message: 'Tags and agenda must be arrays'}, { status: 400 });
+        }
 
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -46,10 +73,10 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ message: 'Event created successfully', event: createdEvent }, { status: 201 });
     } catch (e) {
-        console.error(e);
-        return NextResponse.json({ message: 'Event Creation Failed', error: e instanceof Error ? e.message : 'Unknown'}, { status: 500 })
+         console.error('Event creation failed:', e);
+         return NextResponse.json({ message: 'Event Creation Failed' }, { status: 500 })
     }
-}
+};
 
 export async function GET() {
     try {
@@ -59,9 +86,6 @@ export async function GET() {
 
         return NextResponse.json({ message: 'Events fetched successfully', events }, { status: 200 });
     } catch (e) {
-        return NextResponse.json({ message: 'Event fetching failed', error: e }, { status: 500 });
-    }
-}
-
-
-// 
+        console.error('Event fetching failed:', e);
+        return NextResponse.json({ message: 'Event fetching failed' }, { status: 500 });    }
+};

@@ -20,6 +20,7 @@ const EventAgenda = ({agendaItems }: {agendaItems: string[] }) => (
       {agendaItems.map((item) => (
         <li key={item} > {item} </li>
       ))}
+      
     </ul>
   </div>
 );
@@ -35,11 +36,28 @@ const EventTags = ({tags}: {tags: string[] }) => (
 
 const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> }) => {
     const {slug} = await params ;
-    const request = await fetch(`${BASE_URL}/api/events/${slug}`);
-    const {event : { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} } = await request.json();
-    console.log('org',organizer)
-    if(!description) return notFound();
-    
+    let event; 
+    try {
+        const request = await fetch(`${BASE_URL}/api/events/${encodeURIComponent(slug)}`, {next:{revalidate:60 }});
+        if(!request.ok){
+          if(request.status=== 404){
+            return notFound();
+          }
+          throw new Error(`Failed to Fetch Event ${request.statusText}`);
+        };
+
+      const response = await request.json();
+      event = response.event;
+
+      if(!event){
+        return notFound();
+      }
+      
+    } catch (error) {
+        console.error("Error Fetching Event ",error)
+   }
+
+    const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
 
   return (
    <section id='event'>
