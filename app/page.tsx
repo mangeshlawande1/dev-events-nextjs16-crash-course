@@ -1,28 +1,17 @@
 import EventCard from '@/components/EventCard';
 import ExploreBtn from '@/components/ExploreBtn';
-import { events } from '@/lib/constants';
+import  {EventResponse } from '@/database/event.model';
+import { cacheLife } from 'next/cache';
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ;
 
-// const events =  [
-//   {  title:'Event 1',
-//      image:'/images/event1.png',
-//      slug:"event-1",
-//      location:'location-1',
-//      date: "Date-1",
-//      time:"Time-1"
+const Page = async() => {
+  "use cache";
+  cacheLife('hours');
+  
+  const response = await fetch(`${BASE_URL}/api/events`);
+  const { events } = await response.json();
 
-//    },
-//   { 
-//     title:'Event 2', 
-//     image:'/images/event2.png',
-//     slug:"event-2",
-//     location:'location-2',
-//     date: "Date-2",
-//     time:"Time-2"
-//    },
-// ]
-
-const page = () => {
   return (
     <section>
           <h1 className='text-center '>The Hub for Every Dev <br /> Event You Can't Miss   </h1>
@@ -34,15 +23,17 @@ const page = () => {
             <h3>Featured Events </h3>
 
             <ul className='events'>
-              {events.map((event)=>(
-                <li key={event.title}>
-                 <EventCard {...event}/>
-                </li>
-               ))}
+              {events?.map((event: EventResponse) =>
+                event.slug ? (
+                  <li key={event._id} className='list-none'>
+                    <EventCard {...event} slug={event.slug} />
+                  </li>
+                ) : null
+              )}
             </ul>
           </div>
     </section>
   )
 }
 
-export default page;
+export default Page;
