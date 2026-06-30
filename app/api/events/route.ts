@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
         }
 
         const file = formData.get('image');
-        const tagsRaw = formData.get('tags');
-        const agendaRaw = formData.get('agenda');
+        const tagsRaw = formData.get('tags') as string;
+        const agendaRaw = formData.get('agenda') as string;
 
         if (!(file instanceof File) || file.size === 0) {
             return NextResponse.json({ message: 'Image file is required'}, { status: 400 });

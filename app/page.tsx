@@ -1,10 +1,14 @@
 import EventCard from '@/components/EventCard';
 import ExploreBtn from '@/components/ExploreBtn';
 import  {EventResponse } from '@/database/event.model';
+import { cacheLife } from 'next/cache';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ;
 
 const Page = async() => {
+  "use cache";
+  cacheLife('hours');
+  
   const response = await fetch(`${BASE_URL}/api/events`);
   const { events } = await response.json();
 
@@ -21,7 +25,7 @@ const Page = async() => {
             <ul className='events'>
               {events?.map((event: EventResponse) =>
                 event.slug ? (
-                  <li key={event._id}>
+                  <li key={event._id} className='list-none'>
                     <EventCard {...event} slug={event.slug} />
                   </li>
                 ) : null

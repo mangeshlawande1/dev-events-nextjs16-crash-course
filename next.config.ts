@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // allows us to load image 
+  cacheComponents: true,
   images: {
     remotePatterns:[
       {

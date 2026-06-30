@@ -1,13 +1,16 @@
-import { log } from "console";
+import BookEvent from "@/components/BookEvent";
+import EventCard from "@/components/EventCard";
+import { EventResponse } from "@/database/event.model";
+import { gedtSimilarEventsBySlug } from "@/lib/actions/event.actions";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 const EventDetailItem = ({alt, label, icon}:{alt:string; label:string; icon:string}) => (
   <div className="flex-row-gap-2 item-center">
-    <Image src={icon} alt={alt} width={17} height={17} />
+    <Image src={icon} alt={alt} width={17} height={17}   style={{ width: 'auto', height: 'auto' }} 
+/>
     <p>{label}</p>
   </div>
 );
@@ -57,7 +60,12 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
         console.error("Error Fetching Event ",error)
    }
 
-    const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
+  const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
+  const booking = 10 ;
+
+  const similarEvents : EventResponse[] = await gedtSimilarEventsBySlug(slug);
+
+  console.log('similar: ',similarEvents)
 
   return (
    <section id='event'>
@@ -66,7 +74,7 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
     <div className="details">
       {/* Left side event content   */}
       <div className="content">
-        <Image src={image} alt='Event Banner' width={800} height={800} className='banner' />
+        <Image src={image} alt='Event Banner' width={800} height={800} className='banner'   style={{ width: 'auto', height: 'auto' }}  />
         <section className="flex-col-gap-2">  
           <h2>Overview </h2>
           <p>{overview}</p>
@@ -92,9 +100,38 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
       <EventTags tags={tags}/>
       </div>
       {/* Right side- Booking Form   */}
+
+     
       <aside className="booking">
-      <p className="text-lg font-semibold ">Book Event</p>
+      <p className="text-lg font-semibold ">Book Event </p>
+
+       <div className="signup-card">
+          <h2>Book Your Spot</h2>
+          {booking > 0 ? (
+            <p className="text-sm">
+              Join {booking} people who have already book their Spot !
+            </p>
+          ): (
+            <p className="text-sm">Be the first to book your Spot!</p>
+          ) }
+
+          <BookEvent />
+        </div>
+
+
       </aside>
+    </div>
+    <div className="flex w-full flex-col gap-4 pt-20">
+      <h2>Similar Events</h2>
+      <div className="events">
+        {similarEvents.length > 0 && similarEvents.map((event: EventResponse) =>
+                event.slug ? (
+                  <li key={event._id} className='list-none'>
+                    <EventCard {...event} slug={event.slug} />
+                  </li>
+                ) : null
+              )}
+      </div>
     </div>
    </section>
   )
