@@ -8,6 +8,7 @@ const BookEvent = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();// prevent default bahaviour of the browser to reload 
+        if(!email.trim()) return;
 
         setTimeout(()=> { 
             setSubmitted(true)
@@ -25,7 +26,8 @@ const BookEvent = () => {
                 <label htmlFor="email">Email Address</label>
                 <input 
                 type="email" 
-                value={email} 
+                required 
+                value={email}
                 onChange={ (e) => setEmail(e.target.value)}
                 id="email"
                 placeholder="Enter Your email address" />

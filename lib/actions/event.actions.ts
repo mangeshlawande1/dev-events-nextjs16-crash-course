@@ -6,8 +6,8 @@ import connectToDatabase from "../mongodb";
 export const gedtSimilarEventsBySlug = async (slug: string) => {
     try {
         await connectToDatabase();
-        const event = await Event.findOne({ slug });
-        
+        const normalizedSlug = slug.trim().toLowerCase();
+        const event = await Event.findOne({ slug: normalizedSlug });        
         if (!event) return [];
 
         // Changed from findOne to find to get an array of events

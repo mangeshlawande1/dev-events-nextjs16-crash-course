@@ -57,8 +57,9 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
       }
       
     } catch (error) {
-        console.error("Error Fetching Event ",error)
-   }
+        console.error("Error Fetching Event ", error);
+        throw error instanceof Error ? error : new Error("Failed to fetch event");   
+    }
 
   const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
   const booking = 10 ;
