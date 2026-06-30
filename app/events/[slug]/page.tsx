@@ -9,8 +9,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 const EventDetailItem = ({alt, label, icon}:{alt:string; label:string; icon:string}) => (
   <div className="flex-row-gap-2 item-center">
-    <Image src={icon} alt={alt} width={17} height={17}   style={{ width: 'auto', height: 'auto' }} 
-/>
+    <Image src={icon} alt={alt} width={17} height={17} />
     <p>{label}</p>
   </div>
 );
@@ -38,8 +37,11 @@ const EventTags = ({tags}: {tags: string[] }) => (
 );
 
 const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> }) => {
-    const {slug} = await params ;
-    let event; 
+
+
+  const {slug} = await params;
+  let event; 
+  
     try {
         const request = await fetch(`${BASE_URL}/api/events/${encodeURIComponent(slug)}`, {next:{revalidate:60 }});
         if(!request.ok){
@@ -66,7 +68,6 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
 
   const similarEvents : EventResponse[] = await gedtSimilarEventsBySlug(slug);
 
-  console.log('similar: ',similarEvents)
 
   return (
    <section id='event'>
@@ -75,7 +76,7 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
     <div className="details">
       {/* Left side event content   */}
       <div className="content">
-        <Image src={image} alt='Event Banner' width={800} height={800} className='banner'   style={{ width: 'auto', height: 'auto' }}  />
+        <Image src={image} alt='Event Banner' width={800} height={800} style={{ width: 'auto', height: 'auto' }} />
         <section className="flex-col-gap-2">  
           <h2>Overview </h2>
           <p>{overview}</p>
@@ -116,7 +117,7 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
             <p className="text-sm">Be the first to book your Spot!</p>
           ) }
 
-          <BookEvent />
+          <BookEvent {...({ slug: event.slug, eventId: event._id } as any)} />
         </div>
 
 
