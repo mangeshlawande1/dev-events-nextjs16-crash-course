@@ -3,7 +3,6 @@ import { createBooking } from "@/lib/actions/booking.actions";
 import { useState } from "react"
 import posthog from "posthog-js";
 
-
 /// props structure layout interface 
 interface BookEventProps {
     eventId : string;
@@ -15,7 +14,7 @@ const BookEvent = ({eventId, slug}:BookEventProps ) => {
     const [submitted, setSubmitted] = useState(false)
 
     const handleSubmit =async (e: React.FormEvent) => {
-        e.preventDefault();// prevent default bahaviour of the browser to reload 
+        e.preventDefault();// prevent default behaviour of the browser to reload 
         if(!email.trim()) return;
         const {success} =  await createBooking({eventId, slug, email });
         if(success){
@@ -26,7 +25,6 @@ const BookEvent = ({eventId, slug}:BookEventProps ) => {
             posthog.captureException("Booking creation Failed !")
         }
        
-
         setTimeout(()=> { 
             setSubmitted(true)
         }, 1000)

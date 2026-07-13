@@ -1,11 +1,10 @@
 import BookEvent from "@/components/BookEvent";
 import EventCard from "@/components/EventCard";
 import { EventResponse } from "@/database/event.model";
-import { gedtSimilarEventsBySlug } from "@/lib/actions/event.actions";
+import { getSimilarEventsBySlug, getEventBySlug} from "@/lib/services/event.service";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 const EventDetailItem = ({alt, label, icon}:{alt:string; label:string; icon:string}) => (
   <div className="flex-row-gap-2 item-center">
@@ -21,8 +20,7 @@ const EventAgenda = ({agendaItems }: {agendaItems: string[] }) => (
     <ul>
       {agendaItems.map((item) => (
         <li key={item} > {item} </li>
-      ))}
-      
+      ))}      
     </ul>
   </div>
 );
@@ -30,7 +28,7 @@ const EventAgenda = ({agendaItems }: {agendaItems: string[] }) => (
 const EventTags = ({tags}: {tags: string[] }) => (
   <div className="flex flex-row gap-1.5 flex-wrap">
       {tags.map((tag)=>(
-        <div className="pill" key={tag} >{tag}</div>
+        <div className="pill" key={tag}> {tag}</div>
       ))}
     
   </div>
@@ -38,21 +36,11 @@ const EventTags = ({tags}: {tags: string[] }) => (
 
 const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> }) => {
 
-
   const {slug} = await params;
   let event; 
   
     try {
-        const request = await fetch(`${BASE_URL}/api/events/${encodeURIComponent(slug)}`, {next:{revalidate:60 }});
-        if(!request.ok){
-          if(request.status=== 404){
-            return notFound();
-          }
-          throw new Error(`Failed to Fetch Event ${request.statusText}`);
-        };
-
-      const response = await request.json();
-      event = response.event;
+        event = await getEventBySlug(slug);
 
       if(!event){
         return notFound();
@@ -66,7 +54,7 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
   const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
   const booking = 10 ;
 
-  const similarEvents : EventResponse[] = await gedtSimilarEventsBySlug(slug);
+  const similarEvents : EventResponse[] = await getSimilarEventsBySlug(slug);
 
 
   return (
@@ -102,10 +90,9 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
       <EventTags tags={tags}/>
       </div>
       {/* Right side- Booking Form   */}
-
      
       <aside className="booking">
-      <p className="text-lg font-semibold ">Book Event </p>
+      <p className="text-lg font-semibold">Book Event</p>
 
        <div className="signup-card">
           <h2>Book Your Spot</h2>

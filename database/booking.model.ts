@@ -67,7 +67,6 @@ BookingSchema.pre("save", async function () {
 /**
  * Indexes for common query patterns.
  */
-BookingSchema.index({ eventId: 1 });
 BookingSchema.index({ eventId: 1, createdAt: -1 });
 BookingSchema.index({ email: 1 });
 
