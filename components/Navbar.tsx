@@ -15,10 +15,9 @@ const Navbar = () => {
                 <p>Dev Event </p>
             </Link>
             <ul>
-                <Link href="/">Home </Link>
-                <Link href="/">Events </Link>
-                <Link href="/">Create Event </Link>
-                <Link href="/">Live Events </Link>
+                <Link href="/">Home</Link>
+                <Link href="/">Events</Link>
+                <Link href="/events/create">Create Event </Link>
             </ul>
         </nav>
     </header>
