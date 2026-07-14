@@ -4,7 +4,7 @@ import Image from 'next/image'
 const ExploreBtn = () => {
   return (
 
-   <a href="`#events`" id="explore-btn" className="mt-7 mx-auto inline-flex items-center gap-2">
+   <a href="#events" id="explore-btn" className="mt-7 mx-auto inline-flex items-center gap-2">
     Explore Events
     <Image
       src="/icons/arrow-down.svg"
