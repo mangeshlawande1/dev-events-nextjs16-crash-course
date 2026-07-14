@@ -11,26 +11,17 @@ import { connection } from 'next/server'; // Import from next/server
 import connectToDatabase from "../mongodb";
 
 export async function findAllEvents() {
+  await connection();
   await connectToDatabase();
 
-  const events = await Event.find().lean();
+  const events = await Event.find().sort({ createdAt: -1 }).lean();
   return JSON.parse(JSON.stringify(events));
 }
 
-// export async function findEventBySlug(slug: string) {
-//   await connectToDatabase();
-
-//   const event = await Event.findOne({
-//     slug: slug.trim().toLowerCase(),
-//   }).lean();
-//   return JSON.parse(JSON.stringify(event)); 
-// }
-
 export async function findEventBySlug(slug: string) {
-  // 1. Explicitly signal to Next.js that this execution happens at request time
-  await connection(); 
+  // Explicitly signal to Next.js that this execution happens at request time.
+  await connection();
 
-  // 2. Safely connect to the database (even if it internally uses Date.now())
   await connectToDatabase();
 
   const event = await Event.findOne({

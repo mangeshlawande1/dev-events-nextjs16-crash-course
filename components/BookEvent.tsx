@@ -11,24 +11,29 @@ interface BookEventProps {
 
 const BookEvent = ({eventId, slug}:BookEventProps ) => {
     const [email, setEmail] = useState('');
-    const [submitted, setSubmitted] = useState(false)
+    const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleSubmit =async (e: React.FormEvent) => {
-        e.preventDefault();// prevent default behaviour of the browser to reload 
-        if(!email.trim()) return;
-        const {success} =  await createBooking({eventId, slug, email });
-        if(success){
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault(); // prevent default behaviour of the browser to reload
+        if (!email.trim()) return;
+
+        setLoading(true);
+        setError('');
+
+        const { success, message } = await createBooking({ eventId, email });
+
+        if (success) {
             setSubmitted(true);
-            posthog.capture('event_booked', {eventId, slug, email })
-        }else{
-            console.error("Booking creation Failed !" )
-            posthog.captureException("Booking creation Failed !")
+            posthog.capture('event_booked', { eventId, slug, email });
+        } else {
+            setError(message ?? 'Booking failed. Please try again.');
+            posthog.captureException(new Error(message ?? 'Booking creation failed'));
         }
-       
-        setTimeout(()=> { 
-            setSubmitted(true)
-        }, 1000)
-    }
+
+        setLoading(false);
+    };
   return (
     <div id="book-event">
         {submitted ? (
@@ -47,7 +52,10 @@ const BookEvent = ({eventId, slug}:BookEventProps ) => {
                 id="email"
                 placeholder="Enter Your email address" />
             </div>
-            <button className="button-submit" type="submit"> Submit </button>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            <button className="button-submit" type="submit" disabled={loading}>
+                {loading ? 'Submitting...' : 'Submit'}
+            </button>
            </form>
         ) }
     </div>

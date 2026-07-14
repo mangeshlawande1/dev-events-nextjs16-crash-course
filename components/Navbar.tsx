@@ -5,7 +5,7 @@ const Navbar = () => {
   return (
     <header>
         <nav>
-            <Link href='' className="logo">
+            <Link href="/" className="logo">
                 <Image 
                 src="/icons/logo.png" 
                 alt="logo" 
@@ -16,7 +16,7 @@ const Navbar = () => {
             </Link>
             <ul>
                 <Link href="/">Home</Link>
-                <Link href="/">Events</Link>
+                <Link href="/#events">Events</Link>
                 <Link href="/events/create">Create Event </Link>
             </ul>
         </nav>

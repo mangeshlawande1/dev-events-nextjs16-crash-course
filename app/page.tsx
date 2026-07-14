@@ -8,7 +8,7 @@ const Page = async() => {
 
   return (
     <section>
-        <h1 className='text-center '>The Hub for Every Dev <br /> Event You Can't Miss </h1>
+        <h1 className='text-center '>The Hub for Every Dev <br /> Event You Can&apos;t Miss </h1>
         <p className='text-center mt-5'> Hackathons, Meetups and Conferences, All in One Place ! </p>
 
         <div className="mt-7 item-center flex flex-col gap-5 text-center">

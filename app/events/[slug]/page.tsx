@@ -2,6 +2,7 @@ import BookEvent from "@/components/BookEvent";
 import EventCard from "@/components/EventCard";
 import { EventResponse } from "@/database/event.model";
 import { getSimilarEventsBySlug, getEventBySlug} from "@/lib/services/event.service";
+import { getBookingCount } from "@/lib/services/booking.service";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
@@ -52,9 +53,11 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
     }
 
   const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
-  const booking = 10 ;
 
-  const similarEvents : EventResponse[] = await getSimilarEventsBySlug(slug);
+  const [similarEvents, booking]: [EventResponse[], number] = await Promise.all([
+    getSimilarEventsBySlug(slug),
+    getBookingCount(event._id),
+  ]);
 
 
   return (
@@ -104,7 +107,7 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
             <p className="text-sm">Be the first to book your Spot!</p>
           ) }
 
-          <BookEvent {...({ slug: event.slug, eventId: event._id } as any)} />
+          <BookEvent slug={event.slug} eventId={event._id} />
         </div>
 
 

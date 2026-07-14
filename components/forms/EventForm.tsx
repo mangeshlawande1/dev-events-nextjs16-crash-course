@@ -15,12 +15,16 @@ import {
 
 
 
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="mt-1 text-sm text-red-400">{message}</p>
+  ) : null;
+
 const EventForm = () => {
   const {
   register,
   handleSubmit,
   setValue,
-  watch,
   formState: { errors },
 } = useForm<EventFormValues>({
   resolver: zodResolver(eventFormSchema),
@@ -45,10 +49,12 @@ const EventForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
 
 const onSubmit = async (values: EventFormValues) => {
   setLoading(true);
+  setSubmitError("");
 
   try {
     const formData = new FormData();
@@ -77,7 +83,9 @@ const onSubmit = async (values: EventFormValues) => {
     router.push(`/events/${data.event.slug}`);
   } catch (error) {
     console.error(error);
-    alert("Failed to create event.");
+    setSubmitError(
+      error instanceof Error ? error.message : "Failed to create event."
+    );
   } finally {
     setLoading(false);
   }
@@ -119,6 +127,7 @@ const onSubmit = async (values: EventFormValues) => {
               placeholder="React India Summit 2026"
               required
             />
+            <FieldError message={errors.title?.message} />
           </div>
 
           <div>
@@ -133,6 +142,7 @@ const onSubmit = async (values: EventFormValues) => {
               {...register("description")}
               required
             />
+            <FieldError message={errors.description?.message} />
           </div>
 
           <div>
@@ -147,6 +157,7 @@ const onSubmit = async (values: EventFormValues) => {
               {...register("overview")}
               required
             />
+            <FieldError message={errors.overview?.message} />
           </div>
         </div>
       </section>
@@ -175,6 +186,7 @@ const onSubmit = async (values: EventFormValues) => {
               {...register("venue")}
               required
             />
+            <FieldError message={errors.venue?.message} />
           </div>
 
           <div>
@@ -189,6 +201,7 @@ const onSubmit = async (values: EventFormValues) => {
               {...register("location")}
               required
             />
+            <FieldError message={errors.location?.message} />
           </div>
         </div>
 
@@ -227,6 +240,7 @@ const onSubmit = async (values: EventFormValues) => {
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div>
@@ -241,6 +255,7 @@ const onSubmit = async (values: EventFormValues) => {
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
+            <FieldError message={errors.time?.message} />
           </div>
         </div>
 
@@ -257,6 +272,7 @@ const onSubmit = async (values: EventFormValues) => {
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
+            <FieldError message={errors.audience?.message} />
           </div>
 
           <div>
@@ -271,6 +287,7 @@ const onSubmit = async (values: EventFormValues) => {
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
+            <FieldError message={errors.organizer?.message} />
           </div>
         </div>
       </section>
@@ -295,6 +312,7 @@ const onSubmit = async (values: EventFormValues) => {
               )
             }
         />
+        <FieldError message={errors.agenda?.message} />
       </section>
 
       {/* ================= Tags ================= */}
@@ -321,6 +339,7 @@ const onSubmit = async (values: EventFormValues) => {
           className=" block w-full rounded-lg border border-dark-200 bg-dark-200 p-2 outline-none transition focus:border-primary"
 
         />
+        <FieldError message={errors.tags?.message} />
       </section>
             {/* ================= Banner Image ================= */}
 
@@ -369,8 +388,6 @@ const onSubmit = async (values: EventFormValues) => {
               const file = e.target.files?.[0];
             
               if (!file) return;
-            
-               console.log(file);
 
     setValue("image", file, {
       shouldDirty: true,
@@ -381,11 +398,13 @@ const onSubmit = async (values: EventFormValues) => {
     setPreview(URL.createObjectURL(file));
       }}
           />
+        <FieldError message={errors.image?.message as string | undefined} />
       </section>
 
       {/* ================= Submit ================= */}
 
       <div className="sticky bottom-0 rounded-xl border border-border-dark bg-dark-200bg-primary p-5 backdrop-blur-md">
+        <FieldError message={submitError} />
         <button
           type="submit"
           disabled={loading}
