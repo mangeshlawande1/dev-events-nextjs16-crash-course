@@ -1,33 +1,34 @@
 import EventCard from '@/components/EventCard';
 import ExploreBtn from '@/components/ExploreBtn';
-import  {EventResponse } from '@/database/event.model';
+import { EventResponse } from '@/database/event.model';
 import { getAllEvents } from '@/lib/services/event.service';
 
-
 const Page = async() => {
-  
     const events = await getAllEvents();
 
   return (
     <section>
-          <h1 className='text-center '>The Hub for Every Dev <br /> Event You Can't Miss   </h1>
-          <p className='text-center mt-5'> Hackathons, Meetups and Conferences, All in One Place ! </p>
+        <h1 className='text-center '>The Hub for Every Dev <br /> Event You Can't Miss </h1>
+        <p className='text-center mt-5'> Hackathons, Meetups and Conferences, All in One Place ! </p>
 
-          <ExploreBtn/>
+        <div className="mt-7 item-center flex flex-col gap-5 text-center">
+          <ExploreBtn />
+        </div>
 
-          <div className="mt-20 space-y-7">
-            <h3>Featured Events </h3>
+        {/* ADDED id="events" here so the button points to this section */}
+        <div id="events" className="mt-20 space-y-7 scroll-mt-10">
+          <h3>Featured Events </h3>
 
-            <ul className='events'>
-              {events?.map((event: EventResponse) =>
-                event.slug ? (
-                  <li key={event._id} className='list-none'>
-                    <EventCard {...event} slug={event.slug} />
-                  </li>
-                ) : null
-              )}
-            </ul>
-          </div>
+          <ul className='events'>
+            {events?.map((event: EventResponse) =>
+              event.slug ? (
+                <li key={event._id} className='list-none'>
+                  <EventCard {...event} slug={event.slug} />
+                </li>
+              ) : null
+            )}
+          </ul>
+        </div>
     </section>
   )
 }

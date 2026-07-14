@@ -389,7 +389,7 @@ const onSubmit = async (values: EventFormValues) => {
         <button
           type="submit"
           disabled={loading}
-          id="explore-btn" className="mx-auto items-center rounded-lg bg-primary px-6 py-3 text-lg font-medium text-dark-100 transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          id="explore-btn" className="mx-auto items-center rounded-lg bg-primary/80 px-6 py-3 text-lg font-medium text-black transition hover:bg-primary/70 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "Creating..." : "Create Event"}
         </button>
