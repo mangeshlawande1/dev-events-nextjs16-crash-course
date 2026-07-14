@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Shared enum for the event mode.
+ * Shared enum for event mode.
  */
 export const eventMode = z.enum([
   "online",
@@ -10,9 +10,9 @@ export const eventMode = z.enum([
 ]);
 
 /**
- * Validation schema for the Create Event form.
+ * Shared validation used by both client and server.
  */
-export const eventSchema = z.object({
+export const eventBaseSchema = z.object({
   title: z
     .string()
     .trim()
@@ -60,17 +60,19 @@ export const eventSchema = z.object({
     .min(3, "Organizer is required."),
 
   agenda: z
-    .array(
-      z.string().trim().min(1)
-    )
+    .array(z.string().trim().min(1))
     .min(1, "Add at least one agenda item."),
 
   tags: z
-    .array(
-      z.string().trim().min(1)
-    )
+    .array(z.string().trim().min(1))
     .min(1, "Add at least one tag."),
+});
 
+/**
+ * Client-side schema.
+ * Image is uploaded as a File.
+ */
+export const eventFormSchema = eventBaseSchema.extend({
   image: z
     .instanceof(File, {
       message: "Please select an image.",
@@ -86,7 +88,23 @@ export const eventSchema = z.object({
 });
 
 /**
- * Type inferred directly from the schema.
- * Keeps the form type synchronized with validation.
+ * Server-side schema.
+ * Image has already been uploaded to Cloudinary,
+ * so it is validated as a URL string.
  */
-export type EventFormSchema = z.infer<typeof eventSchema>;
+export const eventCreateSchema = eventBaseSchema.extend({
+  image: z
+    .string()
+    .trim()
+    .url("Invalid image URL."),
+});
+
+/**
+ * Client form values.
+ */
+export type EventFormValues = z.infer<typeof eventFormSchema>;
+
+/**
+ * Server payload.
+ */
+export type EventCreateValues = z.infer<typeof eventCreateSchema>;

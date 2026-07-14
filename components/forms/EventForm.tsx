@@ -1,124 +1,92 @@
 "use client";
 
 import Image from "next/image";
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  eventFormSchema,
+  EventFormValues,
+} from "@/lib/validations/event";
+
+
+
+
 
 const EventForm = () => {
+  const {
+  register,
+  handleSubmit,
+  setValue,
+  watch,
+  formState: { errors },
+} = useForm<EventFormValues>({
+  resolver: zodResolver(eventFormSchema),
+
+  defaultValues: {
+    title: "",
+    description: "",
+    overview: "",
+    venue: "",
+    location: "",
+    date: "",
+    time: "",
+    mode: "offline",
+    audience: "",
+    organizer: "",
+    agenda: [],
+    tags: [],
+  },
+});
+
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-
-  // Basic Information
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [overview, setOverview] = useState("");
   const [preview, setPreview] = useState("");
-  
-  // Event Details
-  const [venue, setVenue] = useState("");
-  const [location, setLocation] = useState("");
-  const [mode, setMode] = useState("offline");
 
-  // Schedule
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [audience, setAudience] = useState("");
-  const [organizer, setOrganizer] = useState("");
 
-  // One agenda item per line
-  const [agenda, setAgenda] = useState("");
+const onSubmit = async (values: EventFormValues) => {
+  setLoading(true);
 
-  // Comma separated tags
-  const [tags, setTags] = useState("");
+  try {
+    const formData = new FormData();
 
-  // Banner Image
-  const [image, setImage] = useState<File | null>(null);
-
-  const handleSubmit = async (
-    e: FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
-
-    if (!image) {
-      alert("Please upload an event banner.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("overview", overview);
-
-      formData.append("venue", venue);
-      formData.append("location", location);
-
-      formData.append("date", date);
-      formData.append("time", time);
-
-      formData.append("mode", mode);
-      formData.append("audience", audience);
-      formData.append("organizer", organizer);
-
-      formData.append("image", image);
-
-      const agendaArray = agenda
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean);
-
-      const tagsArray = tags
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
-
-      formData.append(
-        "agenda",
-        JSON.stringify(agendaArray)
-      );
-
-      formData.append(
-        "tags",
-        JSON.stringify(tagsArray)
-      );
-
-      const response = await fetch("/api/events", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to create event."
-        );
+    Object.entries(values).forEach(([key, value]) => {
+      if (key === "agenda" || key === "tags") {
+        formData.append(key, JSON.stringify(value));
+      } else if (key === "image") {
+          formData.append("image", value as File);
+      } else {
+        formData.append(key, String(value));
       }
+    });
 
-      alert("Event created successfully!");
+    const response = await fetch("/api/events", {
+      method: "POST",
+      body: formData,
+    });
 
-      router.push(`/events/${data.event.slug}`);
-    } catch (error) {
-      console.error(error);
+    const data = await response.json();
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong."
-      );
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(data.message);
     }
-  };
+
+    router.push(`/events/${data.event.slug}`);
+  } catch (error) {
+    console.error(error);
+    alert("Failed to create event.");
+  } finally {
+    setLoading(false);
+  }
+};
 
     return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-5xl flex-col gap-10"
+    <form 
+    onSubmit={handleSubmit(onSubmit)}
+    className="mx-auto flex w-full max-w-5xl flex-col gap-10"
     >
       <div className="space-y-3 text-center">
         <h1>Create Event</h1>
@@ -146,12 +114,9 @@ const EventForm = () => {
 
             <input
               type="text"
-              placeholder="React India Summit 2026"
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-              value={title}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
+              {...register("title")}
+              placeholder="React India Summit 2026"
               required
             />
           </div>
@@ -165,10 +130,7 @@ const EventForm = () => {
               rows={4}
               placeholder="Short description about your event..."
               className="w-full resize-none rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-              value={description}
-              onChange={(e) =>
-                setDescription(e.target.value)
-              }
+              {...register("description")}
               required
             />
           </div>
@@ -182,10 +144,7 @@ const EventForm = () => {
               rows={6}
               placeholder="Write a detailed overview..."
               className="w-full resize-none rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-              value={overview}
-              onChange={(e) =>
-                setOverview(e.target.value)
-              }
+              {...register("overview")}
               required
             />
           </div>
@@ -213,10 +172,7 @@ const EventForm = () => {
               type="text"
               placeholder="Grand Hyatt Convention Center"
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-              value={venue}
-              onChange={(e) =>
-                setVenue(e.target.value)
-              }
+              {...register("venue")}
               required
             />
           </div>
@@ -230,10 +186,7 @@ const EventForm = () => {
               type="text"
               placeholder="Goa, India"
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-              value={location}
-              onChange={(e) =>
-                setLocation(e.target.value)
-              }
+              {...register("location")}
               required
             />
           </div>
@@ -244,24 +197,10 @@ const EventForm = () => {
             Event Mode
           </label>
 
-          <select
-            value={mode}
-            onChange={(e) =>
-              setMode(e.target.value)
-            }
-            className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-          >
-            <option value="offline">
-              Offline
-            </option>
-
-            <option value="online">
-              Online
-            </option>
-
-            <option value="hybrid">
-              Hybrid
-            </option>
+          <select {...register("mode")}>
+            <option value="offline">Offline</option>
+            <option value="online">Online</option>
+            <option value="hybrid">Hybrid</option>
           </select>
         </div>
       </section>
@@ -284,8 +223,7 @@ const EventForm = () => {
 
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              {...register("date" )}
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
@@ -299,8 +237,7 @@ const EventForm = () => {
             <input
               type="text"
               placeholder="09:30 AM"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
+              {...register("time")}
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
@@ -316,8 +253,7 @@ const EventForm = () => {
             <input
               type="text"
               placeholder="Frontend Developers, Students"
-              value={audience}
-              onChange={(e) => setAudience(e.target.value)}
+              {...register("audience")}
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
@@ -331,8 +267,7 @@ const EventForm = () => {
             <input
               type="text"
               placeholder="React India Community"
-              value={organizer}
-              onChange={(e) => setOrganizer(e.target.value)}
+              {...register("organizer")}
               className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
               required
             />
@@ -345,22 +280,20 @@ const EventForm = () => {
       <section className="glass card-shadow space-y-6 rounded-xl border border-border-dark p-8">
         <div>
           <h3>📖 Agenda</h3>
-
-          <p className="mt-1 text-light-200">
-            Enter one agenda item per line.
-          </p>
         </div>
 
         <textarea
-          rows={8}
-          placeholder={`Opening Keynote
-React Server Components
-Next.js Workshop
-Networking Session`}
-          value={agenda}
-          onChange={(e) => setAgenda(e.target.value)}
-          className="w-full resize-none rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-          required
+              rows={5}
+              placeholder="Enter one agenda item per line..."
+              className="w-full resize-none rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"            onChange={(e) =>
+              setValue(
+                "agenda",
+                e.target.value
+                  .split("\n")
+                  .map((i) => i.trim())
+                  .filter(Boolean)
+              )
+            }
         />
       </section>
 
@@ -376,12 +309,17 @@ Networking Session`}
         </div>
 
         <input
-          type="text"
-          placeholder="react,nextjs,mongodb,typescript"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
-          required
+          onChange={(e) =>
+            setValue(
+              "tags",
+              e.target.value
+                .split(",")
+                .map((i) => i.trim())
+                .filter(Boolean)
+            )
+          }
+          className=" block w-full rounded-lg border border-dark-200 bg-dark-200 p-2 outline-none transition focus:border-primary"
+
         />
       </section>
             {/* ================= Banner Image ================= */}
@@ -397,7 +335,7 @@ Networking Session`}
 
         <label
           htmlFor="image"
-          className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-dark-200 p-10 text-center transition hover:border-primary"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-dark-200 bg-dark-200 p-10 text-center transition hover:border-primary"
         >
           {preview ? (
             <Image
@@ -423,33 +361,40 @@ Networking Session`}
         </label>
 
         <input
-          id="image"
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
+            id="image"
+            hidden
+            type="file"
+            accept="image/*"
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const file = e.target.files?.[0];
+            
+              if (!file) return;
+            
+               console.log(file);
 
-            if (!file) return;
+    setValue("image", file, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
 
-            setImage(file);
-            setPreview(URL.createObjectURL(file));
-          }}
-        />
+    setPreview(URL.createObjectURL(file));
+      }}
+          />
       </section>
 
       {/* ================= Submit ================= */}
 
-      <div className="sticky bottom-0 rounded-xl border border-border-dark bg-dark-100 p-5 backdrop-blur-md">
+      <div className="sticky bottom-0 rounded-xl border border-border-dark bg-dark-200bg-primary p-5 backdrop-blur-md">
         <button
           type="submit"
           disabled={loading}
-          className="w-full cursor-pointer rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          id="explore-btn" className="mx-auto items-center rounded-lg bg-primary px-6 py-3 text-lg font-medium text-dark-100 transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Creating Event..." : "🚀 Create Event"}
+          {loading ? "Creating..." : "Create Event"}
         </button>
       </div>
-    </form>
+    </form> 
   );
 };
 
