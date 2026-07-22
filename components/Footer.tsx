@@ -45,7 +45,7 @@ const Footer = () => {
         </nav>
       </div>
 
-      <div className="border-t border-dark-200 px-6 py-4 text-center text-xs text-gray-500">
+      <div className="border-t border-dark-200 px-6 py-4 text-center text-xs text-gray-400">
         &copy; {year} Dev Event. Built with Next.js.
       </div>
     </footer>

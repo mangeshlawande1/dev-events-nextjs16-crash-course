@@ -1,10 +1,48 @@
+import type { Metadata } from "next";
 import BookEvent from "@/components/BookEvent";
 import EventCard from "@/components/EventCard";
 import { EventResponse } from "@/database/event.model";
 import { getSimilarEventsBySlug, getEventBySlug} from "@/lib/services/event.service";
 import { getBookingCount } from "@/lib/services/booking.service";
+import { getEventDateTime, isRegistrationClosed } from "@/lib/utils";
+import { clientEnv } from "@/lib/env";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+
+interface EventDetailPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: EventDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const event: EventResponse | null = await getEventBySlug(slug);
+
+  if (!event) {
+    return { title: "Event Not Found" };
+  }
+
+  const title = event.title;
+  const description = event.description;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: [{ url: event.image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [event.image],
+    },
+  };
+}
 
 
 const EventDetailItem = ({alt, label, icon}:{alt:string; label:string; icon:string}) => (
@@ -35,7 +73,7 @@ const EventTags = ({tags}: {tags: string[] }) => (
   </div>
 );
 
-const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> }) => {
+const EventDetailsPage = async ({params} : EventDetailPageProps) => {
 
   const {slug} = await params;
   let event; 
@@ -52,16 +90,49 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
         throw error instanceof Error ? error : new Error("Failed to fetch event");   
     }
 
-  const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} = event;
+  const  { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer, capacity} = event;
 
   const [similarEvents, booking]: [EventResponse[], number] = await Promise.all([
     getSimilarEventsBySlug(slug),
     getBookingCount(event._id),
   ]);
 
+  const remainingSeats = Math.max(0, capacity - booking);
+  const isFull = remainingSeats === 0;
+
+  const eventIsClosed = isRegistrationClosed(date, time);
+
+  const attendanceModeMap: Record<string, string> = {
+    online: "https://schema.org/OnlineEventAttendanceMode",
+    offline: "https://schema.org/OfflineEventAttendanceMode",
+    hybrid: "https://schema.org/MixedEventAttendanceMode",
+  };
+
+  const startDateTime = getEventDateTime(date, time);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description,
+    image: [image],
+    startDate: startDateTime?.toISOString(),
+    eventAttendanceMode: attendanceModeMap[mode],
+    eventStatus: "https://schema.org/EventScheduled",
+    location:
+      mode === "online"
+        ? { "@type": "VirtualLocation", url: clientEnv.NEXT_PUBLIC_SITE_URL }
+        : { "@type": "Place", name: location, address: location },
+    organizer: { "@type": "Organization", name: organizer },
+  };
+
 
   return (
    <section id='event'>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <h1> Event Details :<br /> {slug}</h1>
     <p >{description}</p>
     <div className="details">
@@ -99,15 +170,32 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
 
        <div className="signup-card">
           <h2>Book Your Spot</h2>
-          {booking > 0 ? (
-            <p className="text-sm">
-              Join {booking} people who have already book their Spot !
+          {eventIsClosed ? (
+            <p className="text-sm text-gray-400">
+              Registration for this event has closed.
             </p>
-          ): (
-            <p className="text-sm">Be the first to book your Spot!</p>
-          ) }
+          ) : isFull ? (
+            <p className="text-sm text-red-400">
+              This event is fully booked.
+            </p>
+          ) : booking > 0 ? (
+            <p className="text-sm">
+              Join {booking} people who have already booked their spot!{" "}
+              {remainingSeats} seat{remainingSeats === 1 ? "" : "s"} left.
+            </p>
+          ) : (
+            <p className="text-sm">
+              Be the first to book your spot! {remainingSeats} seat
+              {remainingSeats === 1 ? "" : "s"} available.
+            </p>
+          )}
 
-          <BookEvent slug={event.slug} eventId={event._id} />
+          <BookEvent
+            slug={event.slug}
+            eventId={event._id}
+            isFull={isFull}
+            isClosed={eventIsClosed}
+          />
         </div>
 
 

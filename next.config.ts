@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { clientEnv } from "./lib/env";
+
+const posthogHost = clientEnv.NEXT_PUBLIC_POSTHOG_HOST;
 
 const nextConfig: NextConfig = {
   typescript :{
@@ -16,15 +19,15 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/ingest/static/:path*",
-        destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/static/:path*`,
+        destination: `${posthogHost}/static/:path*`,
       },
       {
         source: "/ingest/:path*",
-        destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/:path*`,
+        destination: `${posthogHost}/:path*`,
       },
       {
         source: "/ingest/decide",
-        destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/decide`,
+        destination: `${posthogHost}/decide`,
       },
     ];
   },

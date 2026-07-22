@@ -10,6 +10,11 @@ export const eventMode = z.enum([
 ]);
 
 /**
+ * Shared enum for event status.
+ */
+export const eventStatus = z.enum(["draft", "published"]);
+
+/**
  * Shared validation used by both client and server.
  */
 export const eventBaseSchema = z.object({
@@ -54,6 +59,11 @@ export const eventBaseSchema = z.object({
     .trim()
     .min(3, "Audience is required."),
 
+  capacity: z
+    .number()
+    .int("Capacity must be a whole number.")
+    .min(1, "Capacity must be at least 1."),
+
   organizer: z
     .string()
     .trim()
@@ -66,6 +76,8 @@ export const eventBaseSchema = z.object({
   tags: z
     .array(z.string().trim().min(1))
     .min(1, "Add at least one tag."),
+
+  status: eventStatus,
 });
 
 /**
@@ -100,11 +112,55 @@ export const eventCreateSchema = eventBaseSchema.extend({
 });
 
 /**
+ * Client-side edit schema.
+ * Image is optional - if the user doesn't pick a new file,
+ * the existing Cloudinary image is kept.
+ */
+export const eventEditFormSchema = eventBaseSchema.extend({
+  image: z
+    .instanceof(File)
+    .refine(
+      (file) => file.size <= 5 * 1024 * 1024,
+      "Image size must be less than 5 MB."
+    )
+    .refine(
+      (file) => file.type.startsWith("image/"),
+      "Only image files are allowed."
+    )
+    .optional(),
+});
+
+/**
+ * Server-side edit schema.
+ * Image URL is optional for the same reason as above.
+ */
+export const eventUpdateSchema = eventBaseSchema.extend({
+  image: z.string().trim().url("Invalid image URL.").optional(),
+});
+
+/**
+ * Payload for the dedicated status-toggle endpoint.
+ */
+export const eventStatusUpdateSchema = z.object({
+  status: eventStatus,
+});
+
+/**
  * Client form values.
  */
 export type EventFormValues = z.infer<typeof eventFormSchema>;
 
 /**
+ * Client edit form values (image optional).
+ */
+export type EventEditFormValues = z.infer<typeof eventEditFormSchema>;
+
+/**
  * Server payload.
  */
 export type EventCreateValues = z.infer<typeof eventCreateSchema>;
+
+/**
+ * Server update payload.
+ */
+export type EventUpdateValues = z.infer<typeof eventUpdateSchema>;

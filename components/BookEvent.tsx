@@ -1,23 +1,37 @@
 'use client';
-import { createBooking } from "@/lib/actions/booking.actions";
+import { createBooking, cancelBooking } from "@/lib/actions/booking.actions";
 import { useState } from "react"
+import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
+import { useToast } from "@/hooks/useToast";
 
 /// props structure layout interface 
 interface BookEventProps {
     eventId : string;
     slug: string;
+    isFull?: boolean;
+    isClosed?: boolean;
 }
 
-const BookEvent = ({eventId, slug}:BookEventProps ) => {
+type ViewMode = "book" | "cancel";
+
+const BookEvent = ({eventId, slug, isFull = false, isClosed = false}:BookEventProps ) => {
+    const router = useRouter();
+    const toast = useToast();
+
     const [email, setEmail] = useState('');
-    const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const [view, setView] = useState<ViewMode>("book");
+    const [cancelEmail, setCancelEmail] = useState('');
+    const [cancelling, setCancelling] = useState(false);
+
+    const isUnavailable = isFull || isClosed;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); // prevent default behaviour of the browser to reload
-        if (!email.trim()) return;
+        if (!email.trim() || isUnavailable) return;
 
         setLoading(true);
         setError('');
@@ -25,22 +39,98 @@ const BookEvent = ({eventId, slug}:BookEventProps ) => {
         const { success, message } = await createBooking({ eventId, email });
 
         if (success) {
-            setSubmitted(true);
             posthog.capture('event_booked', { eventId, slug, email });
+            // A dedicated, addressable confirmation page - survives a
+            // refresh and can be bookmarked/shared, unlike an inline state flip.
+            router.push(
+                `/events/${slug}/booked?email=${encodeURIComponent(email.trim())}`
+            );
         } else {
             setError(message ?? 'Booking failed. Please try again.');
             posthog.captureException(new Error(message ?? 'Booking creation failed'));
+            setLoading(false);
+        }
+    };
+
+    const runCancel = async (emailToCancel: string) => {
+        if (!emailToCancel.trim()) return;
+
+        setCancelling(true);
+
+        const { success, message } = await cancelBooking({
+            eventId,
+            email: emailToCancel,
+        });
+
+        if (success) {
+            toast.success('Your booking has been cancelled.');
+            posthog.capture('event_booking_cancelled', { eventId, slug });
+            setView("book");
+            setCancelEmail('');
+            // Refresh so seats-remaining reflects the cancellation immediately.
+            router.refresh();
+        } else {
+            toast.error(message ?? 'Failed to cancel your booking.');
         }
 
-        setLoading(false);
+        setCancelling(false);
     };
+
+    // Returning-visitor flow - they have to tell us who they are.
+    const handleCancelForm = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await runCancel(cancelEmail);
+    };
+
+    if (view === "cancel") {
+        return (
+            <div id="book-event">
+                <form onSubmit={handleCancelForm}>
+                    <div>
+                        <label htmlFor="cancel-email">Email Address</label>
+                        <input
+                            type="email"
+                            required
+                            value={cancelEmail}
+                            onChange={(e) => setCancelEmail(e.target.value)}
+                            id="cancel-email"
+                            placeholder="Enter the email you booked with"
+                        />
+                    </div>
+                    <button className="button-submit" type="submit" disabled={cancelling}>
+                        {cancelling ? 'Cancelling...' : 'Cancel my booking'}
+                    </button>
+                </form>
+                <button
+                    type="button"
+                    onClick={() => setView("book")}
+                    className="mt-2 text-sm text-gray-400 underline"
+                >
+                    Back
+                </button>
+            </div>
+        );
+    }
+
+    // Parent already shows a status message (full/closed) above this
+    // component - but an existing booking should still be cancellable
+    // even once the event is full or has passed.
+    if (isUnavailable) {
+        return (
+            <div id="book-event">
+                <button
+                    type="button"
+                    onClick={() => setView("cancel")}
+                    className="text-sm text-gray-400 underline"
+                >
+                    Already registered? Cancel your booking
+                </button>
+            </div>
+        );
+    }
+
   return (
     <div id="book-event">
-        {submitted ? (
-            <p className="text-sm">
-                Thank you For signing up !
-            </p>
-        ) : (
            <form onSubmit={handleSubmit}>
             <div >
                 <label htmlFor="email">Email Address</label>
@@ -57,7 +147,13 @@ const BookEvent = ({eventId, slug}:BookEventProps ) => {
                 {loading ? 'Submitting...' : 'Submit'}
             </button>
            </form>
-        ) }
+        <button
+            type="button"
+            onClick={() => setView("cancel")}
+            className="mt-2 text-sm text-gray-400 underline"
+        >
+            Already registered? Cancel your booking
+        </button>
     </div>
   )
 }
