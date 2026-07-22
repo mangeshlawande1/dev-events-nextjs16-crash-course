@@ -6,16 +6,43 @@ No "use server".
  */
 
 import { Event } from "@/database";
+import type { EventResponse } from "@/database/event.model";
 import { connection } from 'next/server'; // Import from next/server
 
 import connectToDatabase from "../mongodb";
 
-export async function findAllEvents() {
+export const EVENTS_PAGE_SIZE = 9;
+
+export interface PaginatedEvents {
+  events: EventResponse[];
+  totalPages: number;
+  currentPage: number;
+}
+
+export async function findAllEvents(
+  page = 1,
+  pageSize = EVENTS_PAGE_SIZE
+): Promise<PaginatedEvents> {
   await connection();
   await connectToDatabase();
 
-  const events = await Event.find().sort({ createdAt: -1 }).lean();
-  return JSON.parse(JSON.stringify(events));
+  const safePage = Math.max(1, Math.floor(page));
+  const totalCount = await Event.countDocuments();
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const clampedPage = Math.min(safePage, totalPages);
+  const skip = (clampedPage - 1) * pageSize;
+
+  const events = await Event.find()
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(pageSize)
+    .lean();
+
+  return {
+    events: JSON.parse(JSON.stringify(events)),
+    totalPages,
+    currentPage: clampedPage,
+  };
 }
 
 export async function findEventBySlug(slug: string) {
