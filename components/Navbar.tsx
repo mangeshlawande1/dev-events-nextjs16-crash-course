@@ -15,9 +15,11 @@ const Navbar = () => {
                 <p>Dev Event </p>
             </Link>
             <ul>
-                <Link href="/">Home</Link>
-                <Link href="/#events">Events</Link>
-                <Link href="/events/create">Create Event </Link>
+                <li><Link href="/">Home</Link></li>
+                <li><Link href="/#events">Events</Link></li>
+                <li><Link href="/events/create">Create Event </Link></li>
+                <li><Link href="/bookings">My Bookings</Link></li>
+                <li><Link href="/dashboard">Dashboard</Link></li>
             </ul>
         </nav>
     </header>

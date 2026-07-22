@@ -271,3 +271,15 @@
     }
   }
 }
+
+/*
+  Global visible focus indicator. Most interactive elements in this app use
+  `outline-none` and rely only on a border-color change on focus - too weak
+  a signal for keyboard users, especially with low vision or color
+  blindness. This is a real, WCAG-aligned fallback that applies everywhere,
+  without having to touch every individual component.
+*/
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

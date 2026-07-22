@@ -8,51 +8,73 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   eventFormSchema,
+  eventEditFormSchema,
   EventFormValues,
+  EventEditFormValues,
 } from "@/lib/validations/event";
 
 
 
 
 
+type EventFormMode = "create" | "edit";
+
+interface EventFormProps {
+  mode?: EventFormMode;
+  /** Required when mode="edit" - the event's current slug (used for the PATCH URL). */
+  eventSlug?: string;
+  /** Prefills the form when mode="edit". image is the existing Cloudinary URL, not a File. */
+  initialData?: Partial<Omit<EventFormValues, "image">> & { image?: string };
+}
+
 const FieldError = ({ message }: { message?: string }) =>
   message ? (
     <p className="mt-1 text-sm text-red-400">{message}</p>
   ) : null;
 
-const EventForm = () => {
+const EventForm = ({
+  mode = "create",
+  eventSlug,
+  initialData,
+}: EventFormProps) => {
+  const isEditMode = mode === "edit";
+
   const {
   register,
   handleSubmit,
   setValue,
   formState: { errors },
-} = useForm<EventFormValues>({
-  resolver: zodResolver(eventFormSchema),
+} = useForm<EventFormValues | EventEditFormValues>({
+  resolver: zodResolver(isEditMode ? eventEditFormSchema : eventFormSchema),
 
   defaultValues: {
-    title: "",
-    description: "",
-    overview: "",
-    venue: "",
-    location: "",
-    date: "",
-    time: "",
-    mode: "offline",
-    audience: "",
-    organizer: "",
-    agenda: [],
-    tags: [],
+    title: initialData?.title ?? "",
+    description: initialData?.description ?? "",
+    overview: initialData?.overview ?? "",
+    venue: initialData?.venue ?? "",
+    location: initialData?.location ?? "",
+    date: initialData?.date ?? "",
+    time: initialData?.time ?? "",
+    mode: initialData?.mode ?? "offline",
+    audience: initialData?.audience ?? "",
+    capacity: initialData?.capacity ?? 50,
+    organizer: initialData?.organizer ?? "",
+    agenda: initialData?.agenda ?? [],
+    tags: initialData?.tags ?? [],
+    status: initialData?.status ?? "published",
   },
 });
 
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState("");
+  const [preview, setPreview] = useState(
+    typeof initialData?.image === "string" ? initialData.image : ""
+  );
   const [submitError, setSubmitError] = useState("");
 
 
-const onSubmit = async (values: EventFormValues) => {
+const onSubmit = async (values: EventFormValues | EventEditFormValues) => {
   setLoading(true);
   setSubmitError("");
 
@@ -63,16 +85,23 @@ const onSubmit = async (values: EventFormValues) => {
       if (key === "agenda" || key === "tags") {
         formData.append(key, JSON.stringify(value));
       } else if (key === "image") {
-          formData.append("image", value as File);
+        // Only append when a new file was actually picked - editing
+        // without touching the banner should keep the existing image.
+        if (value instanceof File) {
+          formData.append("image", value);
+        }
       } else {
         formData.append(key, String(value));
       }
     });
 
-    const response = await fetch("/api/events", {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      isEditMode ? `/api/events/${eventSlug}` : "/api/events",
+      {
+        method: isEditMode ? "PATCH" : "POST",
+        body: formData,
+      }
+    );
 
     const data = await response.json();
 
@@ -80,11 +109,17 @@ const onSubmit = async (values: EventFormValues) => {
       throw new Error(data.message);
     }
 
-    router.push(`/events/${data.event.slug}`);
+    if (data.event.status === "draft") {
+      router.push("/dashboard");
+    } else {
+      router.push(`/events/${data.event.slug}`);
+    }
   } catch (error) {
     console.error(error);
     setSubmitError(
-      error instanceof Error ? error.message : "Failed to create event."
+      error instanceof Error
+        ? error.message
+        : `Failed to ${isEditMode ? "update" : "create"} event.`
     );
   } finally {
     setLoading(false);
@@ -97,11 +132,12 @@ const onSubmit = async (values: EventFormValues) => {
     className="mx-auto flex w-full max-w-5xl flex-col gap-10"
     >
       <div className="space-y-3 text-center">
-        <h1>Create Event</h1>
+        <h1>{isEditMode ? "Edit Event" : "Create Event"}</h1>
 
         <p className="subheading">
-          Publish your meetup, hackathon or developer
-          conference.
+          {isEditMode
+            ? "Update your event's details below."
+            : "Publish your meetup, hackathon or developer conference."}
         </p>
       </div>
             {/* ================= Basic Information ================= */}
@@ -290,6 +326,22 @@ const onSubmit = async (values: EventFormValues) => {
             <FieldError message={errors.organizer?.message} />
           </div>
         </div>
+
+        <div>
+          <label className="mb-2 block font-medium">
+            Capacity
+          </label>
+
+          <input
+            type="number"
+            min={1}
+            placeholder="100"
+            {...register("capacity", { valueAsNumber: true })}
+            className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary"
+            required
+          />
+          <FieldError message={errors.capacity?.message} />
+        </div>
       </section>
 
       {/* ================= Agenda ================= */}
@@ -348,7 +400,9 @@ const onSubmit = async (values: EventFormValues) => {
           <h3>🖼 Event Banner</h3>
 
           <p className="mt-1 text-light-200">
-            Upload a banner image for your event.
+            {isEditMode
+              ? "Upload a new banner to replace the current one, or leave it as-is."
+              : "Upload a banner image for your event."}
           </p>
         </div>
 
@@ -404,13 +458,38 @@ const onSubmit = async (values: EventFormValues) => {
       {/* ================= Submit ================= */}
 
       <div className="sticky bottom-0 rounded-xl border border-border-dark bg-dark-200bg-primary p-5 backdrop-blur-md">
+        <div className="mb-4 flex items-center justify-center gap-6">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              value="draft"
+              {...register("status")}
+            />
+            Save as Draft
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              value="published"
+              {...register("status")}
+            />
+            Publish
+          </label>
+        </div>
+
         <FieldError message={submitError} />
         <button
           type="submit"
           disabled={loading}
           id="explore-btn" className="mx-auto items-center rounded-lg bg-primary/80 px-6 py-3 text-lg font-medium text-black transition hover:bg-primary/70 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Creating..." : "Create Event"}
+          {loading
+            ? isEditMode
+              ? "Saving..."
+              : "Creating..."
+            : isEditMode
+            ? "Save Changes"
+            : "Create Event"}
         </button>
       </div>
     </form> 

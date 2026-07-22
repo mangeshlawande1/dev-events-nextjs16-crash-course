@@ -9,7 +9,7 @@ import {
 /**
  * Generate a URL-friendly slug from a title.
  */
-function generateSlug(title: string): string {
+export function generateSlug(title: string): string {
   return title
     .toLowerCase()
     .trim()
@@ -88,6 +88,13 @@ const eventSchema = new Schema(
       trim: true,
     },
 
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "published",
+      index: true,
+    },
+
     description: {
       type: String,
       required: true,
@@ -139,6 +146,12 @@ const eventSchema = new Schema(
       type: String,
       required: true,
       trim: true,
+    },
+
+    capacity: {
+      type: Number,
+      required: true,
+      min: [1, "Capacity must be at least 1."],
     },
 
     agenda: {
@@ -197,6 +210,7 @@ eventSchema.pre("save", async function () {
 });
 
 eventSchema.index({ date: 1, mode: 1 });
+eventSchema.index({ status: 1, createdAt: -1 });
 
 const EventModel =
   models.Event ||

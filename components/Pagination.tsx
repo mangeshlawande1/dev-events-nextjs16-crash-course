@@ -3,6 +3,9 @@ import Link from "next/link";
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
+  basePath?: string;
+  /** Preserves active filters/search/sort across page links (e.g. { q: "react", mode: "online" }). */
+  extraParams?: Record<string, string | undefined>;
 }
 
 function getPageNumbers(currentPage: number, totalPages: number): (number | "ellipsis")[] {
@@ -35,12 +38,33 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | "ell
   return result;
 }
 
-const pageHref = (page: number) => (page === 1 ? "/#events" : `/?page=${page}#events`);
+const buildPageHref = (
+  basePath: string,
+  page: number,
+  extraParams: Record<string, string | undefined>
+) => {
+  const hash = basePath === "/" ? "#events" : "";
 
-const Pagination = ({ currentPage, totalPages }: PaginationProps) => {
+  const params = new URLSearchParams();
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  if (page !== 1) params.set("page", String(page));
+
+  const queryString = params.toString();
+  return `${basePath}${queryString ? `?${queryString}` : ""}${hash}`;
+};
+
+const Pagination = ({
+  currentPage,
+  totalPages,
+  basePath = "/",
+  extraParams = {},
+}: PaginationProps) => {
   if (totalPages <= 1) return null;
 
   const pageNumbers = getPageNumbers(currentPage, totalPages);
+  const pageHref = (page: number) => buildPageHref(basePath, page, extraParams);
 
   return (
     <nav

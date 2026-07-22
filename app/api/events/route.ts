@@ -1,12 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { z } from "zod";
 
 import connectDB from "@/lib/mongodb";
-import Event from "@/database/event.model";
+import Event, { generateSlug } from "@/database/event.model";
 import { eventBaseSchema, eventCreateSchema } from "@/lib/validations/event";
+import { apiSuccess, apiError } from "@/lib/api-response";
+import { getCloudinaryEnv } from "@/lib/env";
+import { checkRateLimit, getClientIpFromRequest } from "@/lib/rate-limit";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const CREATE_EVENT_RATE_LIMIT = 5;
+const CREATE_EVENT_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: number }).code === 11000
+  );
+}
 
 function uploadImage(buffer: Buffer): Promise<{ secure_url: string }> {
   return new Promise((resolve, reject) => {
@@ -24,6 +38,20 @@ function uploadImage(buffer: Buffer): Promise<{ secure_url: string }> {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIpFromRequest(req);
+    const { allowed } = checkRateLimit(
+      `create-event:${ip}`,
+      CREATE_EVENT_RATE_LIMIT,
+      CREATE_EVENT_RATE_WINDOW_MS
+    );
+
+    if (!allowed) {
+      return apiError(
+        "Too many events created recently. Please try again later.",
+        429
+      );
+    }
+
     await connectDB();
 
     const formData = await req.formData();
@@ -34,31 +62,19 @@ export async function POST(req: NextRequest) {
     const agendaRaw = formData.get("agenda");
 
     if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json(
-        { message: "Image file is required" },
-        { status: 400 }
-      );
+      return apiError("Image file is required", 400);
     }
 
     if (!file.type.startsWith("image/")) {
-      return NextResponse.json(
-        { message: "Image must be an image file" },
-        { status: 400 }
-      );
+      return apiError("Image must be an image file", 400);
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      return NextResponse.json(
-        { message: "Image file is too large (max 5MB)" },
-        { status: 400 }
-      );
+      return apiError("Image file is too large (max 5MB)", 400);
     }
 
     if (typeof tagsRaw !== "string" || typeof agendaRaw !== "string") {
-      return NextResponse.json(
-        { message: "Tags and agenda are required" },
-        { status: 400 }
-      );
+      return apiError("Tags and agenda are required", 400);
     }
 
     let tags: unknown;
@@ -67,10 +83,7 @@ export async function POST(req: NextRequest) {
       tags = JSON.parse(tagsRaw);
       agenda = JSON.parse(agendaRaw);
     } catch {
-      return NextResponse.json(
-        { message: "Invalid tags or agenda format" },
-        { status: 400 }
-      );
+      return apiError("Invalid tags or agenda format", 400);
     }
 
     // Validate every text field (title, description, dates, tags, agenda, etc.)
@@ -79,20 +92,28 @@ export async function POST(req: NextRequest) {
       ...raw,
       tags,
       agenda,
+      capacity: Number(raw.capacity),
     });
 
     if (!fieldsResult.success) {
-      return NextResponse.json(
-        {
-          message: "Invalid event data",
-          errors: z.treeifyError(fieldsResult.error),
-        },
-        { status: 400 }
+      return apiError("Invalid event data", 400, {
+        errors: z.treeifyError(fieldsResult.error),
+      });
+    }
+
+    const slug = generateSlug(fieldsResult.data.title);
+    const existingEvent = await Event.findOne({ slug });
+
+    if (existingEvent) {
+      return apiError(
+        "An event with a similar title already exists. Please use a different title.",
+        409
       );
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    getCloudinaryEnv();
     const uploadResult = await uploadImage(buffer);
 
     // Full server payload, now including the real Cloudinary URL.
@@ -102,27 +123,24 @@ export async function POST(req: NextRequest) {
     });
 
     if (!createResult.success) {
-      return NextResponse.json(
-        {
-          message: "Invalid event data",
-          errors: z.treeifyError(createResult.error),
-        },
-        { status: 400 }
-      );
+      return apiError("Invalid event data", 400, {
+        errors: z.treeifyError(createResult.error),
+      });
     }
 
     const createdEvent = await Event.create(createResult.data);
 
-    return NextResponse.json(
-      { message: "Event created successfully", event: createdEvent },
-      { status: 201 }
-    );
+    return apiSuccess("Event created successfully", { event: createdEvent }, 201);
   } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return apiError(
+        "An event with a similar title already exists. Please use a different title.",
+        409
+      );
+    }
+
     console.error("Event creation failed:", error);
-    return NextResponse.json(
-      { message: "Event creation failed" },
-      { status: 500 }
-    );
+    return apiError("Event creation failed", 500);
   }
 }
 
@@ -130,17 +148,13 @@ export async function GET() {
   try {
     await connectDB();
 
-    const events = await Event.find().sort({ createdAt: -1 });
+    const events = await Event.find({ status: "published" }).sort({
+      createdAt: -1,
+    });
 
-    return NextResponse.json(
-      { message: "Events fetched successfully", events },
-      { status: 200 }
-    );
+    return apiSuccess("Events fetched successfully", { events });
   } catch (error) {
     console.error("Event fetching failed:", error);
-    return NextResponse.json(
-      { message: "Event fetching failed" },
-      { status: 500 }
-    );
+    return apiError("Event fetching failed", 500);
   }
 }

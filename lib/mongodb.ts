@@ -1,6 +1,7 @@
 // lib/mongodb.ts
 
 import mongoose from "mongoose";
+import { getDatabaseEnv } from "./env";
 
 /**
  * Shape of our cached mongoose connection.
@@ -48,19 +49,13 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   // Create a new connection promise if one doesn't exist.
   if (!cached.promise) {
-    const uri = process.env.MONGODB_URI;
-
-    if (!uri) {
-      throw new Error(
-        "Please define the MONGODB_URI environment variable inside .env.local"
-      );
-    }
+    const { MONGODB_URI } = getDatabaseEnv();
 
     const options = {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(uri, options);
+    cached.promise = mongoose.connect(MONGODB_URI, options);
   }
 
   try {
