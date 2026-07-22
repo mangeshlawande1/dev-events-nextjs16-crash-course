@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import LightRays from "@/components/LightRays";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { PostHogProvider } from "./providers";
 
 
@@ -51,10 +52,11 @@ export default function RootLayout({
         />
         </div>
         <PostHogProvider>
-          <main>
+          <main className="flex-1">
             {children}
           </main>
         </PostHogProvider>
+        <Footer />
         </body>
     </html>
   );

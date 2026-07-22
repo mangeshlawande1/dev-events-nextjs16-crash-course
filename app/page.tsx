@@ -5,6 +5,10 @@ import { getAllEvents } from '@/lib/services/event.service';
 
 const Page = async() => {
     const events = await getAllEvents();
+    const eventList = Array.isArray(events)
+      ? events
+      : (events as { events?: EventResponse[] }).events ?? [];
+
 
   return (
     <section>
@@ -20,7 +24,7 @@ const Page = async() => {
           <h3>Featured Events </h3>
 
           <ul className='events'>
-            {events?.map((event: EventResponse) =>
+            {eventList.map((event: EventResponse) =>
               event.slug ? (
                 <li key={event._id} className='list-none'>
                   <EventCard {...event} slug={event.slug} />

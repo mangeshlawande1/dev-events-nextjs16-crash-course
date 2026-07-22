@@ -5,9 +5,9 @@
     findSimilarEvents,
   } from "../repositories/event.repository";
 
-  export async function getAllEvents() {
+  export async function getAllEvents(page = 1) {
 
-    return findAllEvents();
+    return findAllEvents(page);
   }
 
   export async function getEventBySlug(slug: string) {

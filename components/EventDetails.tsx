@@ -7,6 +7,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 
+
 const EventDetailItem = ({alt, label, icon}:{alt:string; label:string; icon:string}) => (
   <div className="flex-row-gap-2 item-center">
     <Image src={icon} alt={alt} width={17} height={17} />
@@ -35,9 +36,12 @@ const EventTags = ({tags}: {tags: string[] }) => (
   </div>
 );
 
-const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> }) => {
 
-  const {slug} = await params;
+const EventDetails = async ({params} : { params : Promise<string> }) => {
+
+
+    const slug = await params;
+
   let event; 
   
     try {
@@ -129,4 +133,4 @@ const EventDetailsPage = async ({params} : { params : Promise<{slug : string }> 
   )
 }
 
-export default EventDetailsPage;
+export default EventDetails
