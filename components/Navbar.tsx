@@ -14,7 +14,7 @@ const Navbar = () => {
 
                 <p>Dev Event </p>
             </Link>
-            <ul>
+            <ul className="list-none flex gap-5 items-center">
                 <li><Link href="/">Home</Link></li>
                 <li><Link href="/#events">Events</Link></li>
                 <li><Link href="/events/create">Create Event </Link></li>
