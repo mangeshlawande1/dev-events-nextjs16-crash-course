@@ -7,6 +7,14 @@ import Link from "next/link";
 import { loginSchema } from "@/lib/validations/auth";
 import { useToast } from "@/hooks/useToast";
 
+
+function getSafeCallbackUrl(url: string | null): string {
+  if (url && url.startsWith("/") && !url.startsWith("//")) {
+    return url;
+  }
+  return "/";
+}
+
 const LoginPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,22 +37,27 @@ const LoginPage = () => {
 
     setLoading(true);
 
-    const response = await signIn("credentials", {
-      email: result.data.email,
-      password: result.data.password,
-      redirect: false,
-    });
+    
+    try {
+      const response = await signIn("credentials", {
+        email: result.data.email,
+        password: result.data.password,
+        redirect: false,
+      });
 
-    setLoading(false);
+      if (response?.error) {
+        setError("Invalid email or password.");
+        return;
+      }
 
-    if (response?.error) {
-      setError("Invalid email or password.");
-      return;
+      toast.success("Signed in successfully.");
+      router.push(getSafeCallbackUrl(searchParams.get("callbackUrl")));
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Signed in successfully.");
-    router.push(searchParams.get("callbackUrl") ?? "/");
-    router.refresh();
   };
 
   return (

@@ -81,7 +81,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       agenda: sourceEvent.agenda,
       organizer: sourceEvent.organizer,
       tags: sourceEvent.tags,
-      createdBy: sourceEvent.createdBy,
+     createdBy: session?.user?.id,
     });
 
     return apiSuccess(
