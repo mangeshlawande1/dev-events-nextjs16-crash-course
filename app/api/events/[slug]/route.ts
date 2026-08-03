@@ -8,6 +8,8 @@ import Booking from "@/database/booking.model";
 import { eventBaseSchema, eventUpdateSchema } from "@/lib/validations/event";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { getCloudinaryEnv } from "@/lib/env";
+import { auth } from "@/lib/auth";
+import { canManageEvent } from "@/lib/ownership";
 
 interface RouteParams {
   params: Promise<{
@@ -96,6 +98,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     if (!existingEvent) {
       return apiError("Event not found!", 404);
+    }
+
+    const session = await auth();
+    if (!canManageEvent(existingEvent.createdBy, session)) {
+      return apiError("You don't have permission to edit this event.", 403);
     }
 
     const formData = await req.formData();
@@ -211,6 +218,11 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
 
     if (!existingEvent) {
       return apiError("Event not found!", 404);
+    }
+
+    const session = await auth();
+    if (!canManageEvent(existingEvent.createdBy, session)) {
+      return apiError("You don't have permission to delete this event.", 403);
     }
 
     // Cascade: remove bookings tied to this event so none are left orphaned.

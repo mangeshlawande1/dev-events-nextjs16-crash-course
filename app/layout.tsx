@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Schibsted_Grotesk, Martian_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import ThemeProvider from "@/components/ThemeProvider";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 import BackgroundEffects from "@/components/BackgroundEffects";
 import SkipLink from "@/components/ui/SkipLink";
 import Navbar from "@/components/Navbar";
@@ -54,9 +56,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("h-full", "antialiased", schibstedGrotesk.variable, martianMono.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-screen flex flex-col">
+        <AuthSessionProvider>
+        <ThemeProvider>
         <ToastProvider>
         <SkipLink />
         <Navbar />
@@ -68,6 +73,8 @@ export default function RootLayout({
         </PostHogProvider>
         <Footer />
         </ToastProvider>
+        </ThemeProvider>
+        </AuthSessionProvider>
         </body>
     </html>
   );

@@ -16,10 +16,20 @@
     return findAllEvents(page, undefined, {}, filters);
   }
 
-  /** Dashboard - every event, including drafts, so organizers can manage them. */
-  export async function getAllEventsForDashboard(page = 1) {
+  /**
+   * Dashboard - every event, including drafts, so organizers can manage
+   * them. Scoped to the current user's own events unless they're an admin
+   * (who sees everything, across every organizer).
+   */
+  export async function getAllEventsForDashboard(
+    page = 1,
+    scope: { userId: string; role: string }
+  ) {
 
-    return findAllEvents(page, undefined, { includeDrafts: true });
+    return findAllEvents(page, undefined, {
+      includeDrafts: true,
+      createdBy: scope.role === "admin" ? undefined : scope.userId,
+    });
   }
 
   /**

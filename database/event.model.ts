@@ -95,6 +95,18 @@ const eventSchema = new Schema(
       index: true,
     },
 
+    /**
+     * Not required at the schema level - events created before auth existed
+     * have no owner. Those are treated as admin-only manageable (an
+     * organizer without matching ownership can't touch them). A real
+     * migration would backfill this for old data; that's out of scope here.
+     */
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
     description: {
       type: String,
       required: true,

@@ -24,19 +24,17 @@ export interface BookingWithEvent {
   event: EventResponse;
 }
 
-export async function findBookingsByEmail(
-  email: string
+interface LeanBookingWithPopulatedEvent {
+  _id: unknown;
+  email: string;
+  createdAt: unknown;
+  eventId: unknown;
+}
+
+/** Shared populate/defensive-filter/map logic for both lookup paths below. */
+async function mapBookingsWithEvent(
+  bookings: LeanBookingWithPopulatedEvent[]
 ): Promise<BookingWithEvent[]> {
-  await connection();
-  await connectToDatabase();
-
-  const normalizedEmail = email.trim().toLowerCase();
-
-  const bookings = await Booking.find({ email: normalizedEmail })
-    .sort({ createdAt: -1 })
-    .populate("eventId")
-    .lean();
-
   // Defensive: skip any booking whose event no longer exists (shouldn't
   // happen, since deleting an event cascades to its bookings, but a null
   // populate() result would otherwise crash the mapping below).
@@ -54,4 +52,38 @@ export async function findBookingsByEmail(
       }))
     )
   );
+}
+
+export async function findBookingsByEmail(
+  email: string
+): Promise<BookingWithEvent[]> {
+  await connection();
+  await connectToDatabase();
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const bookings = await Booking.find({ email: normalizedEmail })
+    .sort({ createdAt: -1 })
+    .populate("eventId")
+    .lean();
+
+  return mapBookingsWithEvent(bookings as unknown as LeanBookingWithPopulatedEvent[]);
+}
+
+/**
+ * Logged-in "My Bookings" lookup - more secure than the email-lookup path
+ * above, since it can't be spoofed by knowing/guessing someone's email.
+ */
+export async function findBookingsByUserId(
+  userId: string
+): Promise<BookingWithEvent[]> {
+  await connection();
+  await connectToDatabase();
+
+  const bookings = await Booking.find({ userId })
+    .sort({ createdAt: -1 })
+    .populate("eventId")
+    .lean();
+
+  return mapBookingsWithEvent(bookings as unknown as LeanBookingWithPopulatedEvent[]);
 }

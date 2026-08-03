@@ -4,6 +4,8 @@ import connectDB from "@/lib/mongodb";
 import Event, { generateSlug } from "@/database/event.model";
 import type { EventResponse } from "@/database/event.model";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { auth } from "@/lib/auth";
+import { canManageEvent } from "@/lib/ownership";
 
 interface RouteParams {
   params: Promise<{
@@ -53,6 +55,11 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       return apiError("Event not found!", 404);
     }
 
+    const session = await auth();
+    if (!canManageEvent(sourceEvent.createdBy, session)) {
+      return apiError("You don't have permission to duplicate this event.", 403);
+    }
+
     const { title, slug: newSlug } = await buildUniqueCopyTitleAndSlug(
       sourceEvent.title
     );
@@ -74,6 +81,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       agenda: sourceEvent.agenda,
       organizer: sourceEvent.organizer,
       tags: sourceEvent.tags,
+      createdBy: sourceEvent.createdBy,
     });
 
     return apiSuccess(
