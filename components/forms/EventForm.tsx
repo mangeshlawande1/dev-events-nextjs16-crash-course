@@ -246,7 +246,7 @@ const onSubmit = async (values: EventFormValues | EventEditFormValues) => {
             Event Mode
           </label>
 
-          <select {...register("mode")}>
+          <select className="w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 outline-none transition focus:border-primary" {...register("mode")}>
             <option value="offline">Offline</option>
             <option value="online">Online</option>
             <option value="hybrid">Hybrid</option>

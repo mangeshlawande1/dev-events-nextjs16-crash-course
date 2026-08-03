@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import BookingsList from "@/components/bookings/BookingsList";
-import { getBookingsByEmail } from "@/lib/services/booking.service";
+import { getBookingsByEmail, getBookingsByUserId } from "@/lib/services/booking.service";
+import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "My Bookings | Dev Event",
@@ -12,6 +13,23 @@ interface BookingsPageProps {
 }
 
 const BookingsPage = async ({ searchParams }: BookingsPageProps) => {
+  const session = await auth();
+
+  if (session?.user) {
+    return (
+      <section className="mx-auto max-w-2xl px-6 py-16">
+        <h1 className="text-center">My Bookings</h1>
+        <p className="mt-5 text-center text-gray-400">
+          Signed in as {session.user.email}.
+        </p>
+
+        <div className="mt-10">
+          <UserBookingsSection userId={session.user.id} email={session.user.email ?? ""} />
+        </div>
+      </section>
+    );
+  }
+
   const { email } = await searchParams;
   const normalizedEmail = email?.trim().toLowerCase();
 
@@ -59,6 +77,18 @@ const BookingsPage = async ({ searchParams }: BookingsPageProps) => {
 
 const BookingsListSection = async ({ email }: { email: string }) => {
   const bookings = await getBookingsByEmail(email);
+
+  return <BookingsList bookings={bookings} email={email} />;
+};
+
+const UserBookingsSection = async ({
+  userId,
+  email,
+}: {
+  userId: string;
+  email: string;
+}) => {
+  const bookings = await getBookingsByUserId(userId);
 
   return <BookingsList bookings={bookings} email={email} />;
 };

@@ -1,8 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import EventForm from "@/components/forms/EventForm";
 import { getEventForEdit } from "@/lib/services/event.service";
 import type { EventResponse } from "@/database/event.model";
+import { auth } from "@/lib/auth";
+import { canManageEvent } from "@/lib/ownership";
 
 interface EditEventPageProps {
   params: Promise<{ slug: string }>;
@@ -16,11 +18,23 @@ function toDateInputValue(isoDate: string): string {
 }
 
 const EditEventPage = async ({ params }: EditEventPageProps) => {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const { slug } = await params;
   const event: EventResponse | null = await getEventForEdit(slug);
 
   if (!event) {
     notFound();
+  }
+
+  // Not just an API-level check - an organizer shouldn't even be able to
+  // load another organizer's event into the form, not just get blocked on save.
+  if (!canManageEvent(event.createdBy, session)) {
+    redirect("/dashboard");
   }
 
   return (

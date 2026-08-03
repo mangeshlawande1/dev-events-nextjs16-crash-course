@@ -1,12 +1,44 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
+import { authConfig } from "@/lib/auth.config";
 
 /**
- * Adds baseline security headers to every response. This is headers-only -
- * it does NOT enforce any access control. /dashboard and /events/create
- * are genuinely public (no auth system exists in this app); robots.ts only
- * asks crawlers not to index them, which is a courtesy, not a lock.
+ * Enforces real route protection for organizer-only areas (previously,
+ * robots.ts only asked crawlers not to index these - a courtesy, not a
+ * lock; this is the actual lock) and adds baseline security headers to
+ * every response.
+ *
+ * Named "proxy" per the Next.js 16 convention (renamed from "middleware" -
+ * same functionality, same file location, just a rename).
  */
-export function middleware() {
+
+// A separate, lightweight NextAuth instance built from ONLY the edge-safe
+// config - this file must never import lib/auth.ts directly, since that
+// pulls in Mongoose/bcryptjs (Node-only, cannot run in Edge middleware).
+const { auth } = NextAuth(authConfig);
+
+const ORGANIZER_ONLY_PREFIXES = ["/dashboard", "/events/create"];
+
+function requiresOrganizer(pathname: string): boolean {
+  return ORGANIZER_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+export default auth((req) => {
+  const { nextUrl } = req;
+  const role = req.auth?.user?.role;
+
+  if (requiresOrganizer(nextUrl.pathname)) {
+    if (!req.auth) {
+      const loginUrl = new URL("/login", nextUrl);
+      loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (role !== "organizer" && role !== "admin") {
+      return NextResponse.redirect(new URL("/", nextUrl));
+    }
+  }
+
   const response = NextResponse.next();
 
   // Prevents the site from being embedded in an iframe elsewhere (clickjacking).
@@ -66,7 +98,7 @@ export function middleware() {
   // );
 
   return response;
-}
+});
 
 export const config = {
   // Skip static assets/images - headers on those don't add value and this

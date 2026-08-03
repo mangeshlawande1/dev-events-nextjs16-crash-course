@@ -4,6 +4,8 @@ import connectDB from "@/lib/mongodb";
 import Event from "@/database/event.model";
 import { eventStatusUpdateSchema } from "@/lib/validations/event";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { auth } from "@/lib/auth";
+import { canManageEvent } from "@/lib/ownership";
 
 interface RouteParams {
   params: Promise<{
@@ -29,17 +31,24 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return apiError("Invalid status. Must be 'draft' or 'published'.", 400);
     }
 
-    const updatedEvent = await Event.findOneAndUpdate(
-      { slug: normalizedSlug },
-      { status: result.data.status },
-      { new: true }
-    );
+    const existingEvent = await Event.findOne({ slug: normalizedSlug });
 
-    if (!updatedEvent) {
+    if (!existingEvent) {
       return apiError("Event not found!", 404);
     }
 
-    return apiSuccess("Status updated successfully", { event: updatedEvent });
+    const session = await auth();
+    if (!canManageEvent(existingEvent.createdBy, session)) {
+      return apiError(
+        "You don't have permission to update this event's status.",
+        403
+      );
+    }
+
+    existingEvent.status = result.data.status;
+    await existingEvent.save();
+
+    return apiSuccess("Status updated successfully", { event: existingEvent });
   } catch (error) {
     console.error("Status update failed:", error);
     return apiError("Status update failed", 500);

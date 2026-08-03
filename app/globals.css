@@ -10,6 +10,8 @@
   --color-border-dark: #151024;
   --color-dark-100: #0d161a;
   --color-dark-200: #182830;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
   --radius: 0.625rem;
   --background: #030708;
   --foreground: #ffffff;
@@ -44,6 +46,26 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/*
+  Light theme overrides. Deliberately only swaps the core surface/text
+  tokens (background, foreground, the dark-100/dark-200 "card"/"border"
+  colors, and the built-in gray-400/500 text scale that's used directly
+  via text-gray-400/500 across most components) - not a full re-theme.
+  Known follow-up: a handful of files (Toast, ConfirmDialog, EventsTable
+  status badges, form errors) use specific red/green/yellow shades chosen
+  against a dark background - these still render, but haven't been
+  individually re-tuned for light-mode contrast yet.
+*/
+.light {
+  --color-dark-100: #f3f5f6;
+  --color-dark-200: #e2e8ea;
+  --color-border-dark: #e2e8ea;
+  --color-gray-400: #52606d;
+  --color-gray-500: #3c454c;
+  --background: #ffffff;
+  --foreground: #0d161a;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -53,6 +75,8 @@
   --color-border-dark: var(--color-border-dark);
   --color-dark-100: var(--color-dark-100);
   --color-dark-200: var(--color-dark-200);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
   --font-schibsted-grotesk: var(--font-schibsted-grotesk);
   --font-martian-mono: var(--font-martian-mono);
   --color-sidebar-ring: var(--sidebar-ring);

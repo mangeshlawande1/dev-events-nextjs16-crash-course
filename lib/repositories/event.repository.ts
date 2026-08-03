@@ -22,6 +22,8 @@ export interface PaginatedEvents {
 interface StatusFilterOptions {
   /** Dashboard/edit contexts need drafts too; public pages don't. */
   includeDrafts?: boolean;
+  /** Scopes results to one owner - organizers see only their own events on the dashboard. */
+  createdBy?: string;
 }
 
 export type EventSortOption = "latest" | "upcoming" | "popular";
@@ -41,12 +43,16 @@ function escapeRegex(value: string): string {
 }
 
 function buildMatchFilter(
-  { includeDrafts = false }: StatusFilterOptions,
+  { includeDrafts = false, createdBy }: StatusFilterOptions,
   { query, location, mode, tag, sort }: EventQueryFilters
 ): Record<string, unknown> {
   const filter: Record<string, unknown> = includeDrafts
     ? {}
     : { status: "published" };
+
+  if (createdBy) {
+    filter.createdBy = createdBy;
+  }
 
   if (location) {
     filter.location = { $regex: escapeRegex(location), $options: "i" };

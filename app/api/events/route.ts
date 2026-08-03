@@ -8,6 +8,7 @@ import { eventBaseSchema, eventCreateSchema } from "@/lib/validations/event";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { getCloudinaryEnv } from "@/lib/env";
 import { checkRateLimit, getClientIpFromRequest } from "@/lib/rate-limit";
+import { auth } from "@/lib/auth";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const CREATE_EVENT_RATE_LIMIT = 5;
@@ -38,6 +39,16 @@ function uploadImage(buffer: Buffer): Promise<{ secure_url: string }> {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return apiError("You must be signed in to create an event.", 401);
+    }
+
+    if (session.user.role !== "organizer" && session.user.role !== "admin") {
+      return apiError("Only organizers can create events.", 403);
+    }
+
     const ip = getClientIpFromRequest(req);
     const { allowed } = checkRateLimit(
       `create-event:${ip}`,
@@ -128,7 +139,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const createdEvent = await Event.create(createResult.data);
+    const createdEvent = await Event.create({
+      ...createResult.data,
+      createdBy: session.user.id,
+    });
 
     return apiSuccess("Event created successfully", { event: createdEvent }, 201);
   } catch (error) {

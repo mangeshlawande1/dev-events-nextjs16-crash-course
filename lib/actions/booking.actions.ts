@@ -3,13 +3,15 @@ import { Booking, Event } from "@/database";
 import connectToDatabase from "../mongodb";
 import { isRegistrationClosed } from "../utils";
 import { checkRateLimit, getClientIpFromHeaders } from "../rate-limit";
+import { auth } from "../auth";
 
 const BOOKING_RATE_LIMIT = 5;
 const BOOKING_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 interface CreateBookingParams {
   eventId: string;
-  email: string;
+  /** Required for guest bookings; ignored/overridden when logged in. */
+  email?: string;
 }
 
 interface CreateBookingResult {
@@ -38,6 +40,19 @@ export const createBooking = async ({
 
     await connectToDatabase();
 
+    const session = await auth();
+
+    // When logged in, the account's own email is authoritative - never
+    // trust a client-passed email instead, or a logged-in user could book
+    // under a fake email while authenticated, defeating the point of
+    // having an account at all.
+    const effectiveEmail = session?.user?.email ?? email;
+    const userId = session?.user?.id;
+
+    if (!effectiveEmail) {
+      return { success: false, message: "Email is required." };
+    }
+
     const event = (await Event.findById(eventId)
       .select("capacity date time")
       .lean()) as { capacity: number; date: string; time: string } | null;
@@ -63,7 +78,7 @@ export const createBooking = async ({
       return { success: false, message: "This event is fully booked." };
     }
 
-    await Booking.create({ eventId, email });
+    await Booking.create({ eventId, email: effectiveEmail, userId });
 
     return { success: true };
   } catch (error) {

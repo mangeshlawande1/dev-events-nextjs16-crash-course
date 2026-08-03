@@ -10,6 +10,7 @@ import Event from "./event.model";
 export interface IBooking extends Document {
   eventId: Types.ObjectId;
   email: string;
+  userId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,13 @@ const BookingSchema = new Schema<IBooking>(
           EMAIL_REGEX.test(email),
         message: "Please provide a valid email address",
       },
+    },
+
+    /** Present when the booker was logged in; absent for guest bookings. */
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
     },
   },
   {
