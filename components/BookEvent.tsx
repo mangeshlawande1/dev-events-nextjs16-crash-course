@@ -40,7 +40,8 @@ const BookEvent = ({eventId, slug, isFull = false, isClosed = false}:BookEventPr
         setLoading(true);
         setError('');
 
-        const { success, message } = await createBooking({ eventId });
+        try {
+            const { success, message } = await createBooking({ eventId });
 
         if (success) {
             const bookedEmail = session?.user?.email ?? '';
@@ -53,7 +54,15 @@ const BookEvent = ({eventId, slug, isFull = false, isClosed = false}:BookEventPr
             posthog.captureException(new Error(message ?? 'Booking creation failed'));
             setLoading(false);
         }
+        } catch (err) {
+            setError('Booking failed. Please try again.');
+            const bookingError = err instanceof Error ? err : new Error(String(err ?? 'Booking creation failed'));
+            posthog.captureException(bookingError);
+        } finally {
+            setLoading(false);
+        }
     };
+    
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); // prevent default behaviour of the browser to reload
